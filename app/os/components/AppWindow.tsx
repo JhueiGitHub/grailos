@@ -8,9 +8,16 @@ interface WindowProps {
   title: string;
   appName: string;
   onClose: () => void;
+  initialPosition: { x: number; y: number };
 }
 
-const Window: React.FC<WindowProps> = ({ id, title, appName, onClose }) => {
+const Window: React.FC<WindowProps> = ({
+  id,
+  title,
+  appName,
+  onClose,
+  initialPosition,
+}) => {
   const [isMinimizing, setIsMinimizing] = useState(false);
   const controls = useAnimation();
   const windowRef = useRef<HTMLDivElement>(null);
@@ -45,13 +52,12 @@ const Window: React.FC<WindowProps> = ({ id, title, appName, onClose }) => {
   };
 
   useEffect(() => {
-    const iconPosition = getIconPosition();
     if (windowRef.current) {
       const rect = windowRef.current.getBoundingClientRect();
       controls.set({
         scale: 0,
-        x: iconPosition.x - rect.width / 2,
-        y: iconPosition.y - rect.height / 2,
+        x: initialPosition.x - rect.width / 2,
+        y: initialPosition.y - rect.height / 2,
       });
       controls.start({
         scale: 1,
@@ -64,7 +70,7 @@ const Window: React.FC<WindowProps> = ({ id, title, appName, onClose }) => {
         },
       });
     }
-  }, [controls, appName]);
+  }, [controls, initialPosition]);
 
   const handleMinimize = () => {
     setIsMinimizing(true);

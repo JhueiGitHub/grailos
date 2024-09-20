@@ -1,0 +1,101 @@
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String
+  imageUrl  String
+  email     String
+  streams   Stream[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Stream {
+  id        String   @id @default(uuid())
+  name      String
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  flows     Flow[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId])
+}
+
+model Flow {
+  id        String   @id @default(uuid())
+  name      String
+  streamId  String
+  stream    Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  colors    Color[]
+  fonts     Font[]
+  assets    Asset[]
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([streamId])
+}
+
+model Color {
+  id        String        @id @default(uuid())
+  category  ColorCategory
+  key       String
+  value     String
+  flowId    String
+  flow      Flow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([flowId])
+}
+
+enum ColorCategory {
+  BACKGROUND
+  BORDER
+  TEXT
+}
+
+model Font {
+  id        String       @id @default(uuid())
+  category  FontCategory
+  family    String
+  url       String
+  flowId    String
+  flow      Flow         @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([flowId])
+}
+
+enum FontCategory {
+  PRIMARY
+  SECONDARY
+}
+
+model Asset {
+  id        String        @id @default(uuid())
+  category  AssetCategory
+  url       String?
+  flowId    String
+  flow      Flow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([flowId])
+}
+
+enum AssetCategory {
+  WALLPAPER
+  DOCK_ICON
+}
