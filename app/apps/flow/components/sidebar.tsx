@@ -9,17 +9,15 @@ import { ScrollArea } from "@flow/components/ui/scoll-area";
 
 const Sidebar: React.FC = () => {
   return (
-    <div className="w-64 h-full bg-background border-r">
-      <ScrollArea className="h-full">
-        <div className="p-4 space-y-4">
-          <SearchBar />
-          <Separator />
-          <ProfilesDropdown />
-          <StreamsButton />
-          <StellarButton />
-          <Separator />
-          <StreamsTree />
-        </div>
+    <div className="w-64 h-full border-r p-4 flex flex-col">
+      <SearchBar placeholder="Search" className="mb-4" />
+      <Separator className="my-4" />
+      <ProfilesDropdown />
+      <StreamsButton />
+      <StellarButton />
+      <Separator className="my-4" />
+      <ScrollArea className="flex-grow">
+        <StreamsTree />
       </ScrollArea>
     </div>
   );

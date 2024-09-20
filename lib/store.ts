@@ -25,6 +25,7 @@ interface FlowState {
   streams: FullStream[];
   currentStream: FullStream | null;
   currentFlow: FullFlow | null;
+  selectedStreamId: string | null;
   openWindows: WindowState[];
   viewMode: "grid" | "list";
 
@@ -32,10 +33,16 @@ interface FlowState {
   setStreams: (streams: FullStream[]) => void;
   setCurrentStream: (stream: FullStream | null) => void;
   setCurrentFlow: (flow: FullFlow | null) => void;
+  setSelectedStreamId: (streamId: string | null) => void;
   createStream: (name: string) => Promise<void>;
-  updateFlow: (id: string, data: Partial<FullFlow>) => void;
+  updateStream: (streamId: string, data: Partial<Stream>) => Promise<void>;
+  deleteStream: (streamId: string) => Promise<void>;
+  createFlow: (streamId: string, name: string) => Promise<void>;
+  updateFlow: (flowId: string, data: Partial<FullFlow>) => Promise<void>;
+  deleteFlow: (flowId: string) => Promise<void>;
   sortStreams: (by: "name" | "updatedAt") => void;
   setViewMode: (mode: "grid" | "list") => void;
+  renameStream: (streamId: string, newName: string) => Promise<void>;
 
   openWindow: (appId: string, title: string) => void;
   closeWindow: (id: string) => void;
@@ -44,45 +51,166 @@ interface FlowState {
   focusWindow: (id: string) => void;
 }
 
-export const useFlowStore = create<FlowState>((set) => ({
+export const useFlowStore = create<FlowState>((set, get) => ({
   currentProfile: null,
   streams: [],
   currentStream: null,
   currentFlow: null,
+  selectedStreamId: null,
   openWindows: [],
   viewMode: "grid",
 
   setCurrentProfile: (profile) => set({ currentProfile: profile }),
+
   setStreams: (streams) => set({ streams }),
+
   setCurrentStream: (stream) => set({ currentStream: stream }),
+
   setCurrentFlow: (flow) => set({ currentFlow: flow }),
 
+  setSelectedStreamId: (streamId) => set({ selectedStreamId: streamId }),
+
   createStream: async (name) => {
-    // TODO: Implement API call to create new stream
-    const newStream: FullStream = {
-      id: Date.now().toString(),
-      name,
-      flows: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      profileId: "", // This should be set correctly when implementing the API call
-    };
+    const { currentProfile } = get();
+    if (!currentProfile) throw new Error("No current profile");
+
+    const response = await fetch("/api/streams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, profileId: currentProfile.id }),
+    });
+
+    if (!response.ok) throw new Error("Failed to create stream");
+
+    const newStream: FullStream = await response.json();
     set((state) => ({ streams: [...state.streams, newStream] }));
   },
 
-  updateFlow: (id, data) =>
+  updateStream: async (streamId, data) => {
+    const response = await fetch(`/api/streams/${streamId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) throw new Error("Failed to update stream");
+
+    const updatedStream: FullStream = await response.json();
     set((state) => ({
-      currentFlow:
-        state.currentFlow && state.currentFlow.id === id
-          ? { ...state.currentFlow, ...data }
-          : state.currentFlow,
+      streams: state.streams.map((stream) =>
+        stream.id === streamId ? { ...stream, ...updatedStream } : stream
+      ),
+      currentStream:
+        state.currentStream?.id === streamId
+          ? { ...state.currentStream, ...updatedStream }
+          : state.currentStream,
+    }));
+  },
+
+  deleteStream: async (streamId) => {
+    const response = await fetch(`/api/streams/${streamId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) throw new Error("Failed to delete stream");
+
+    set((state) => ({
+      streams: state.streams.filter((stream) => stream.id !== streamId),
+      currentStream:
+        state.currentStream?.id === streamId ? null : state.currentStream,
+      selectedStreamId:
+        state.selectedStreamId === streamId ? null : state.selectedStreamId,
+    }));
+  },
+
+  renameStream: async (streamId, newName) => {
+    const response = await fetch(`/api/streams/${streamId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+
+    if (!response.ok) throw new Error("Failed to rename stream");
+
+    const updatedStream: Stream = await response.json();
+    set((state) => ({
+      streams: state.streams.map((stream) =>
+        stream.id === streamId
+          ? { ...stream, name: updatedStream.name }
+          : stream
+      ),
+      currentStream:
+        state.currentStream?.id === streamId
+          ? { ...state.currentStream, name: updatedStream.name }
+          : state.currentStream,
+    }));
+  },
+
+  createFlow: async (streamId, name) => {
+    const response = await fetch("/api/flows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ streamId, name }),
+    });
+
+    if (!response.ok) throw new Error("Failed to create flow");
+
+    const newFlow: FullFlow = await response.json();
+    set((state) => ({
+      streams: state.streams.map((stream) =>
+        stream.id === streamId
+          ? { ...stream, flows: [...stream.flows, newFlow] }
+          : stream
+      ),
+      currentStream:
+        state.currentStream?.id === streamId
+          ? {
+              ...state.currentStream,
+              flows: [...state.currentStream.flows, newFlow],
+            }
+          : state.currentStream,
+    }));
+  },
+
+  updateFlow: async (flowId, data) => {
+    const response = await fetch(`/api/flows/${flowId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) throw new Error("Failed to update flow");
+
+    const updatedFlow: FullFlow = await response.json();
+    set((state) => ({
       streams: state.streams.map((stream) => ({
         ...stream,
         flows: stream.flows.map((flow) =>
-          flow.id === id ? { ...flow, ...data } : flow
+          flow.id === flowId ? { ...flow, ...updatedFlow } : flow
         ),
       })),
-    })),
+      currentFlow:
+        state.currentFlow?.id === flowId
+          ? { ...state.currentFlow, ...updatedFlow }
+          : state.currentFlow,
+    }));
+  },
+
+  deleteFlow: async (flowId) => {
+    const response = await fetch(`/api/flows/${flowId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) throw new Error("Failed to delete flow");
+
+    set((state) => ({
+      streams: state.streams.map((stream) => ({
+        ...stream,
+        flows: stream.flows.filter((flow) => flow.id !== flowId),
+      })),
+      currentFlow: state.currentFlow?.id === flowId ? null : state.currentFlow,
+    }));
+  },
 
   sortStreams: (by) => {
     set((state) => ({

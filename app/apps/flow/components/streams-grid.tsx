@@ -1,34 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useFlowStore } from "@/lib/store";
-import { Stream } from "@prisma/client";
-import { Card } from "@flow/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@flow/components/ui/card";
 
 const StreamGrid: React.FC = () => {
-  const [streams, setStreams] = useState<Stream[]>([]);
-  const { currentProfile } = useFlowStore();
-
-  useEffect(() => {
-    const fetchStreams = async () => {
-      if (currentProfile) {
-        const response = await fetch(
-          `/api/streams?profileId=${currentProfile.id}`
-        );
-        const data = await response.json();
-        setStreams(data);
-      }
-    };
-
-    fetchStreams();
-  }, [currentProfile]);
+  const { streams, setSelectedStreamId } = useFlowStore();
 
   return (
-    <div className="grid grid-cols-3 gap-4 p-4">
+    <div className="grid grid-cols-3 gap-4 mt-6">
       {streams.map((stream) => (
-        <Card key={stream.id} className="p-4">
-          <h3 className="font-bold">{stream.name}</h3>
-          <p className="text-sm text-gray-500">
-            Edited {new Date(stream.updatedAt).toLocaleDateString()}
-          </p>
+        <Card
+          key={stream.id}
+          className="cursor-pointer hover:bg-gray-900 hover:bg-opacity-45 bg-gray-900 bg-opacity-30 border-gray-700 border-opacity-60 border-spacing-3"
+          onClick={() => setSelectedStreamId(stream.id)}
+        >
+          <CardHeader>
+            <CardTitle>{stream.name}</CardTitle>
+            <CardDescription>
+              {stream.flows.length} flow{stream.flows.length !== 1 ? "s" : ""}
+              <br />
+              Last updated: {new Date(stream.updatedAt).toLocaleDateString()}
+            </CardDescription>
+          </CardHeader>
         </Card>
       ))}
     </div>

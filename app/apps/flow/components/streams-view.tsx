@@ -7,10 +7,15 @@ import StreamGrid from "@flow/components/streams-grid";
 
 const StreamsView: React.FC = () => {
   return (
-    <div className="flex-1 overflow-hidden">
-      <NavButtons />
-      <ProfilesDropdown />
-      <NewStreamButton />
+    <div className="flex-1 overflow-hidden p-4">
+      <div className="flex justify-between items-center mb-4">
+        <NavButtons />
+        <div className="flex items-center space-x-4">
+          <ProfilesDropdown />
+          <NewStreamButton />
+        </div>
+      </div>
+      <h1 className="text-2xl font-bold mb-4">All Streams</h1>
       <FilterBar />
       <StreamGrid />
     </div>
