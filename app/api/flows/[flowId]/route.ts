@@ -15,13 +15,9 @@ export async function PATCH(
     }
 
     const flow = await db.flow.update({
-      where: {
-        id: params.flowId,
-      },
-      data: {
-        name,
-        isActive,
-      },
+      where: { id: params.flowId },
+      data: { name, isActive },
+      include: { colors: true, fonts: true, assets: true },
     });
 
     return NextResponse.json(flow);
@@ -43,9 +39,7 @@ export async function DELETE(
     }
 
     const flow = await db.flow.delete({
-      where: {
-        id: params.flowId,
-      },
+      where: { id: params.flowId },
     });
 
     return NextResponse.json(flow);
@@ -54,3 +48,6 @@ export async function DELETE(
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: These endpoints are used for updating and deleting specific flows.
+// The PATCH endpoint corresponds to "Update flow" in the diagram, including activating a flow.

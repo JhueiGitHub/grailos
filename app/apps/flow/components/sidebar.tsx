@@ -1,9 +1,9 @@
 import React from "react";
-import SearchBar from "@flow/components/ui/search-bar";
-import ProfilesDropdown from "@flow/components/profiles-dropdown";
-import StreamsButton from "@flow/components/streams-button";
-import StellarButton from "@flow/components/stellar-button;
-import StreamTree from "@flow/components/ui/streams-tree";
+import { SearchBar } from "@flow/components/search-bar";
+import { ProfilesDropdown } from "@flow/components/profiles-dropdown";
+import { StreamsButton } from "@flow/components/streams-button";
+import { StellarButton } from "@flow/components/stellar-button";
+import { StreamsTree } from "@flow/components/streams-tree";
 import { Separator } from "@flow/components/ui/separator";
 import { ScrollArea } from "@flow/components/ui/scoll-area";
 
@@ -18,7 +18,7 @@ const Sidebar: React.FC = () => {
           <StreamsButton />
           <StellarButton />
           <Separator />
-          <StreamTree />
+          <StreamsTree />
         </div>
       </ScrollArea>
     </div>

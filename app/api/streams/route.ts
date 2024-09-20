@@ -11,18 +11,13 @@ export async function GET() {
     }
 
     const streams = await db.stream.findMany({
-      where: {
-        profileId: profile.id,
-      },
+      where: { profileId: profile.id },
       include: {
         flows: {
-          include: {
-            colors: true,
-            fonts: true,
-            assets: true,
-          },
+          include: { colors: true, fonts: true, assets: true },
         },
       },
+      orderBy: { updatedAt: "desc" },
     });
 
     return NextResponse.json(streams);
@@ -54,3 +49,6 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: These endpoints are used when fetching all streams for display in the UI,
+// and when creating a new stream. They correspond to the "Fetch streams" and "Create New Stream" actions in the diagram.

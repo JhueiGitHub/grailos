@@ -17,14 +17,13 @@ export async function GET(req: Request) {
     }
 
     const flows = await db.flow.findMany({
-      where: {
-        streamId,
-      },
+      where: { streamId },
       include: {
         colors: true,
         fonts: true,
         assets: true,
       },
+      orderBy: { updatedAt: "desc" },
     });
 
     return NextResponse.json(flows);
@@ -60,3 +59,6 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: These endpoints correspond to "Fetch flows for stream" and "Create New Flow in Stream" actions.
+// They're used when displaying flows within a stream and when creating a new flow.

@@ -16,11 +16,7 @@ export async function POST(req: Request) {
     }
 
     const asset = await db.asset.create({
-      data: {
-        flowId,
-        category,
-        url,
-      },
+      data: { flowId, category, url },
     });
 
     return NextResponse.json(asset);
@@ -29,3 +25,6 @@ export async function POST(req: Request) {
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: This endpoint is used when uploading new assets (like background images or dock icons) for a flow.
+// It's part of the "Customize Variant" action in the diagram.

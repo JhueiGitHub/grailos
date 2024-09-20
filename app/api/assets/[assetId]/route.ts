@@ -15,13 +15,8 @@ export async function PATCH(
     }
 
     const asset = await db.asset.update({
-      where: {
-        id: params.assetId,
-      },
-      data: {
-        category,
-        url,
-      },
+      where: { id: params.assetId },
+      data: { category, url },
     });
 
     return NextResponse.json(asset);
@@ -43,9 +38,7 @@ export async function DELETE(
     }
 
     const asset = await db.asset.delete({
-      where: {
-        id: params.assetId,
-      },
+      where: { id: params.assetId },
     });
 
     return NextResponse.json(asset);
@@ -54,3 +47,6 @@ export async function DELETE(
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: These endpoints are used for updating and deleting specific assets within a flow.
+// They're part of the "Customize Variant" action, allowing for modification of existing assets.

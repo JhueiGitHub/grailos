@@ -19,9 +19,7 @@ export async function PATCH(
         id: params.streamId,
         profileId: profile.id,
       },
-      data: {
-        name,
-      },
+      data: { name },
     });
 
     return NextResponse.json(stream);
@@ -55,3 +53,6 @@ export async function DELETE(
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
+
+// Role in the diagram: These endpoints are used for updating and deleting specific streams.
+// They would be part of the stream management functionality, though not explicitly shown in the high-level diagram.
