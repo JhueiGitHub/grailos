@@ -43,6 +43,11 @@ interface FlowState {
   sortStreams: (by: "name" | "updatedAt") => void;
   setViewMode: (mode: "grid" | "list") => void;
   renameStream: (streamId: string, newName: string) => Promise<void>;
+  updateFlowAsset: (
+    flowId: string,
+    category: string,
+    url: string
+  ) => Promise<void>;
 
   openWindow: (appId: string, title: string) => void;
   closeWindow: (id: string) => void;
@@ -220,6 +225,46 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
       }),
+    }));
+  },
+
+  updateFlowAsset: async (flowId: string, category: string, url: string) => {
+    const response = await fetch(`/api/assets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flowId, category, url }),
+    });
+
+    if (!response.ok) throw new Error("Failed to update flow asset");
+
+    const updatedAsset: Asset = await response.json();
+    set((state) => ({
+      streams: state.streams.map((stream) => ({
+        ...stream,
+        flows: stream.flows.map((flow) =>
+          flow.id === flowId
+            ? {
+                ...flow,
+                assets: [
+                  ...flow.assets.filter((asset) => asset.category !== category),
+                  updatedAsset,
+                ],
+              }
+            : flow
+        ),
+      })),
+      currentFlow:
+        state.currentFlow?.id === flowId
+          ? {
+              ...state.currentFlow,
+              assets: [
+                ...state.currentFlow.assets.filter(
+                  (asset) => asset.category !== category
+                ),
+                updatedAsset,
+              ],
+            }
+          : state.currentFlow,
     }));
   },
 
