@@ -7,8 +7,50 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components/ui/dropdown-menu";
 import { Button } from "@flow/components/ui/button";
-import { Input } from "@flow/components/ui/input";
 import { ChevronDown, Pencil, Trash } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@flow/components/ui/card";
+import FlowEditor from "./flow-editor";
+import {
+  Flow,
+  ColorCategory,
+  FontCategory,
+  AssetCategory,
+} from "@prisma/client";
+
+// Define the FullFlow type with correct enum types
+interface FullFlow extends Flow {
+  colors: {
+    id: string;
+    category: ColorCategory;
+    key: string;
+    value: string;
+    flowId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+  fonts: {
+    id: string;
+    category: FontCategory;
+    family: string;
+    url: string;
+    flowId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+  assets: {
+    id: string;
+    category: AssetCategory;
+    url: string | null;
+    flowId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
+}
 
 export const StreamView: React.FC = () => {
   const {
@@ -17,7 +59,10 @@ export const StreamView: React.FC = () => {
     renameStream,
     deleteStream,
     setSelectedStreamId,
+    setCurrentFlow,
+    currentFlow,
   } = useFlowStore();
+
   const selectedStream = streams.find(
     (stream) => stream.id === selectedStreamId
   );
@@ -39,6 +84,14 @@ export const StreamView: React.FC = () => {
       await deleteStream(selectedStream.id);
     }
   };
+
+  const handleFlowClick = (flow: FullFlow) => {
+    setCurrentFlow(flow);
+  };
+
+  if (currentFlow) {
+    return <FlowEditor />;
+  }
 
   return (
     <div>
@@ -65,12 +118,20 @@ export const StreamView: React.FC = () => {
           Back to All Streams
         </Button>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {selectedStream.flows.map((flow) => (
-          <div key={flow.id} className="border rounded-lg p-4">
-            <h3 className="text-lg font-semibold">{flow.name}</h3>
-            {/* Add more flow details here */}
-          </div>
+      <div className="grid grid-cols-3 gap-4 mt-6">
+        {selectedStream.flows.map((flow: FullFlow) => (
+          <Card
+            key={flow.id}
+            className="cursor-pointer hover:bg-gray-900 hover:bg-opacity-45 bg-gray-900 bg-opacity-30 border-gray-700 border-opacity-60 border-spacing-3"
+            onClick={() => handleFlowClick(flow)}
+          >
+            <CardHeader>
+              <CardTitle>{flow.name}</CardTitle>
+              <CardDescription>
+                Last updated: {new Date(flow.updatedAt).toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+          </Card>
         ))}
       </div>
     </div>
