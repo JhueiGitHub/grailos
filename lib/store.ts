@@ -1,53 +1,12 @@
 import { create } from "zustand";
 import { Stream, Flow, Color, Font, Asset, Profile } from "@prisma/client";
-import {
-  Node,
-  Edge,
-  Connection,
-  EdgeChange,
-  NodeChange,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge,
-} from "reactflow";
+import { Node, Edge, applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 
 type FullFlow = Flow & {
   colors: Color[];
   fonts: Font[];
   assets: Asset[];
 };
-
-type FlowEditorState = {
-  nodes: Node[];
-  edges: Edge[];
-  showLeftSidebar: boolean;
-  showRightSidebar: boolean;
-};
-
-interface FlowStore {
-  currentProfile: Profile | null;
-  streams: Stream[];
-  selectedStreamId: string | null;
-  currentFlow: FullFlow | null;
-  flowEditor: FlowEditorState;
-  setCurrentProfile: (profile: Profile) => void;
-  setStreams: (streams: Stream[]) => void;
-  createStream: (name: string) => Promise<void>;
-  renameStream: (id: string, newName: string) => Promise<void>;
-  deleteStream: (id: string) => Promise<void>;
-  setSelectedStreamId: (id: string | null) => void;
-  setCurrentFlow: (flow: FullFlow | null) => void;
-  updateFlow: (id: string, updatedFlow: Partial<FullFlow>) => Promise<void>;
-  setNodes: (nodes: Node[]) => void;
-  setEdges: (edges: Edge[]) => void;
-  onNodesChange: NodeChange;
-  onEdgesChange: EdgeChange;
-  onConnect: Connection;
-  toggleLeftSidebar: () => void;
-  toggleRightSidebar: () => void;
-  updateNodeData: (nodeId: string, newData: any) => void;
-  updateDesktopBackground: (imageUrl: string) => void;
-}
 
 type FullStream = Stream & {
   flows: FullFlow[];
@@ -70,7 +29,6 @@ interface FlowState {
   selectedStreamId: string | null;
   openWindows: WindowState[];
   viewMode: "grid" | "list";
-  flowEditor: FlowEditorState;
 
   setCurrentProfile: (profile: Profile) => void;
   setStreams: (streams: FullStream[]) => void;
@@ -91,22 +49,21 @@ interface FlowState {
     category: string,
     url: string
   ) => Promise<void>;
+
+  nodes: Node[];
+  edges: Edge[];
+
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  updateNodes: (changes: any) => void;
+  updateEdges: (changes: any) => void;
+  updateNodeData: (nodeId: string, data: any) => void;
+
   openWindow: (appId: string, title: string) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   maximizeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
-
-  setNodes: (nodes: Node[]) => void;
-  setEdges: (edges: Edge[]) => void;
-  onNodesChange: (changes: NodeChange[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  onConnect: (connection: Connection) => void;
-  addNode: (node: Node) => void;
-  updateNode: (id: string, data: any) => void;
-  removeNode: (id: string) => void;
-  toggleLeftSidebar: () => void;
-  toggleRightSidebar: () => void;
 }
 
 export const useFlowStore = create<FlowState>((set, get) => ({
@@ -117,12 +74,28 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   selectedStreamId: null,
   openWindows: [],
   viewMode: "grid",
-  flowEditor: {
-    nodes: [],
-    edges: [],
-    showLeftSidebar: true,
-    showRightSidebar: true,
-  },
+  nodes: [],
+  edges: [],
+
+  setNodes: (nodes) => set({ nodes }),
+  setEdges: (edges) => set({ edges }),
+
+  updateNodes: (changes) =>
+    set((state) => ({
+      nodes: applyNodeChanges(changes, state.nodes),
+    })),
+
+  updateEdges: (changes) =>
+    set((state) => ({
+      edges: applyEdgeChanges(changes, state.edges),
+    })),
+
+  updateNodeData: (nodeId, newData) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
+      ),
+    })),
 
   setCurrentProfile: (profile) => set({ currentProfile: profile }),
 
@@ -184,6 +157,29 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         state.currentStream?.id === streamId ? null : state.currentStream,
       selectedStreamId:
         state.selectedStreamId === streamId ? null : state.selectedStreamId,
+    }));
+  },
+
+  renameStream: async (streamId, newName) => {
+    const response = await fetch(`/api/streams/${streamId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+
+    if (!response.ok) throw new Error("Failed to rename stream");
+
+    const updatedStream: Stream = await response.json();
+    set((state) => ({
+      streams: state.streams.map((stream) =>
+        stream.id === streamId
+          ? { ...stream, name: updatedStream.name }
+          : stream
+      ),
+      currentStream:
+        state.currentStream?.id === streamId
+          ? { ...state.currentStream, name: updatedStream.name }
+          : state.currentStream,
     }));
   },
 
@@ -264,32 +260,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     }));
   },
 
-  setViewMode: (mode) => set({ viewMode: mode }),
-
-  renameStream: async (streamId, newName) => {
-    const response = await fetch(`/api/streams/${streamId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName }),
-    });
-
-    if (!response.ok) throw new Error("Failed to rename stream");
-
-    const updatedStream: Stream = await response.json();
-    set((state) => ({
-      streams: state.streams.map((stream) =>
-        stream.id === streamId
-          ? { ...stream, name: updatedStream.name }
-          : stream
-      ),
-      currentStream:
-        state.currentStream?.id === streamId
-          ? { ...state.currentStream, name: updatedStream.name }
-          : state.currentStream,
-    }));
-  },
-
-  updateFlowAsset: async (flowId, category, url) => {
+  updateFlowAsset: async (flowId: string, category: string, url: string) => {
     const response = await fetch(`/api/assets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -329,104 +300,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     }));
   },
 
-  onNodesChange: (changes) => {
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        nodes: applyNodeChanges(changes, state.flowEditor.nodes),
-      },
-    }));
-  },
-  onEdgesChange: (changes) => {
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        edges: applyEdgeChanges(changes, state.flowEditor.edges),
-      },
-    }));
-  },
-  onConnect: (connection) => {
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        edges: addEdge(connection, state.flowEditor.edges),
-      },
-    }));
-  },
-  toggleLeftSidebar: () => 
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        showLeftSidebar: !state.flowEditor.showLeftSidebar,
-      },
-    })),
-  toggleRightSidebar: () => 
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        showRightSidebar: !state.flowEditor.showRightSidebar,
-      },
-    })),
-    onNodesChange: (changes) => {
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          nodes: applyNodeChanges(changes, state.flowEditor.nodes),
-        },
-      }));
-    },
-    onEdgesChange: (changes) => {
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          edges: applyEdgeChanges(changes, state.flowEditor.edges),
-        },
-      }));
-    },
-    onConnect: (connection) => {
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          edges: addEdge(connection, state.flowEditor.edges),
-        },
-      }));
-    },
-    toggleLeftSidebar: () => 
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          showLeftSidebar: !state.flowEditor.showLeftSidebar,
-        },
-      })),
-    toggleRightSidebar: () => 
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          showRightSidebar: !state.flowEditor.showRightSidebar,
-        },
-      })),
-    updateNodeData: (nodeId, newData) => 
-      set((state) => ({
-        flowEditor: {
-          ...state.flowEditor,
-          nodes: state.flowEditor.nodes.map(node => 
-            node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
-          ),
-        },
-      })),
-    updateDesktopBackground: (imageUrl) => 
-      set((state) => ({
-        currentFlow: state.currentFlow 
-          ? { 
-              ...state.currentFlow, 
-              assets: state.currentFlow.assets.map(asset => 
-                asset.category === 'WALLPAPER' 
-                  ? { ...asset, url: imageUrl } 
-                  : asset
-              )
-            }
-          : state.currentFlow
-      })),
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   openWindow: (appId, title) =>
     set((state) => ({
@@ -473,81 +347,5 @@ export const useFlowStore = create<FlowState>((set, get) => ({
           ? { ...window, zIndex: state.openWindows.length }
           : { ...window, zIndex: index }
       ),
-    })),
-
-  setNodes: (nodes) =>
-    set((state) => ({
-      flowEditor: { ...state.flowEditor, nodes },
-    })),
-
-  setEdges: (edges) =>
-    set((state) => ({
-      flowEditor: { ...state.flowEditor, edges },
-    })),
-
-  onNodesChange: (changes) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        nodes: applyNodeChanges(changes, state.flowEditor.nodes),
-      },
-    })),
-
-  onEdgesChange: (changes) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        edges: applyEdgeChanges(changes, state.flowEditor.edges),
-      },
-    })),
-
-  onConnect: (connection) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        edges: addEdge(connection, state.flowEditor.edges),
-      },
-    })),
-
-  addNode: (node) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        nodes: [...state.flowEditor.nodes, node],
-      },
-    })),
-
-  updateNode: (id, data) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        nodes: state.flowEditor.nodes.map((node) =>
-          node.id === id ? { ...node, data: { ...node.data, ...data } } : node
-        ),
-      },
-    })),
-
-  removeNode: (id) =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        nodes: state.flowEditor.nodes.filter((node) => node.id !== id),
-      },
-    })),
-
-  toggleLeftSidebar: () =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        showLeftSidebar: !state.flowEditor.showLeftSidebar,
-      },
-    })),
-
-  toggleRightSidebar: () =>
-    set((state) => ({
-      flowEditor: {
-        ...state.flowEditor,
-        showRightSidebar: !state.flowEditor.showRightSidebar,
-      },
     })),
 }));

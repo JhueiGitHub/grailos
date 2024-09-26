@@ -1,126 +1,80 @@
-"use client";
-
-import React, { useCallback } from "react";
-import ReactFlow, {
-  Background,
+import React, { useEffect } from "react";
+import {
+  ReactFlow,
   Controls,
-  MiniMap,
-  NodeTypes,
-  EdgeTypes,
-  Node,
-  Edge,
-  Connection,
-  NodeChange,
-  EdgeChange,
+  Background,
   useNodesState,
   useEdgesState,
-  addEdge,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { useFlowStore } from "@/lib/store";
-import EditorNavBar from "./editor-nav-bar";
-import { EditorLeftSidebar } from "./editor-left-sidebar";
-import EditorRightSidebar from "./editor-right-sidebar";
-import WallpaperNode from "../nodes/wallpaper-node";
-import { motion } from "framer-motion";
+import { AssetNode } from "./AssetNode";
 
-// Define custom node types
-const nodeTypes: NodeTypes = {
-  wallpaperNode: WallpaperNode,
+const nodeTypes = {
+  assetNode: AssetNode,
 };
-
-// Define custom edge types if needed
-const edgeTypes: EdgeTypes = {};
 
 const FlowEditor: React.FC = () => {
   const {
-    flowEditor,
+    currentFlow,
+    nodes,
+    edges,
     setNodes,
     setEdges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-    toggleLeftSidebar,
-    toggleRightSidebar,
+    updateNodes,
+    updateEdges,
   } = useFlowStore();
 
-  const [nodes, setNodesInternal, onNodesChangeInternal] = useNodesState(
-    flowEditor.nodes
-  );
-  const [edges, setEdgesInternal, onEdgesChangeInternal] = useEdgesState(
-    flowEditor.edges
-  );
+  const [reactFlowNodes, setReactFlowNodes, onNodesChange] =
+    useNodesState(nodes);
+  const [reactFlowEdges, setReactFlowEdges, onEdgesChange] =
+    useEdgesState(edges);
 
-  // Sync internal state with Zustand store
-  React.useEffect(() => {
-    setNodes(nodes);
-  }, [nodes, setNodes]);
+  useEffect(() => {
+    if (currentFlow) {
+      // Initialize nodes based on currentFlow data
+      const initialNodes = currentFlow.assets.map((asset, index) => ({
+        id: asset.id,
+        type: "assetNode",
+        position: { x: 100 * index, y: 100 },
+        data: { label: asset.category, image: asset.url },
+      }));
 
-  React.useEffect(() => {
-    setEdges(edges);
-  }, [edges, setEdges]);
+      setNodes(initialNodes);
+      setEdges([]); // Initialize edges as needed
+    }
+  }, [currentFlow, setNodes, setEdges]);
 
-  const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      onNodesChangeInternal(changes);
-      onNodesChange(changes);
-    },
-    [onNodesChangeInternal, onNodesChange]
-  );
+  useEffect(() => {
+    setReactFlowNodes(nodes);
+    setReactFlowEdges(edges);
+  }, [nodes, edges, setReactFlowNodes, setReactFlowEdges]);
 
-  const handleEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      onEdgesChangeInternal(changes);
-      onEdgesChange(changes);
-    },
-    [onEdgesChangeInternal, onEdgesChange]
-  );
+  const onNodesChangeHandler = (changes: any) => {
+    onNodesChange(changes);
+    updateNodes(changes);
+  };
 
-  const handleConnect = useCallback(
-    (connection: Connection) => {
-      const newEdge = addEdge(connection, edges);
-      setEdgesInternal(newEdge);
-      onConnect(connection);
-    },
-    [edges, setEdgesInternal, onConnect]
-  );
+  const onEdgesChangeHandler = (changes: any) => {
+    onEdgesChange(changes);
+    updateEdges(changes);
+  };
+
+  if (!currentFlow) return null;
 
   return (
-    <div className="h-screen w-screen bg-black overflow-hidden">
-      <EditorNavBar />
-      <div className="flex h-full">
-        <motion.div
-          initial={{ x: -265 }}
-          animate={{ x: flowEditor.showLeftSidebar ? 0 : -265 }}
-          transition={{ duration: 0.3 }}
-          className="w-64 bg-gray-900"
-        >
-          <EditorLeftSidebar />
-        </motion.div>
-        <div className="flex-grow">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onConnect={handleConnect}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-          >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
-        </div>
-        <motion.div
-          initial={{ x: 265 }}
-          animate={{ x: flowEditor.showRightSidebar ? 0 : 265 }}
-          transition={{ duration: 0.3 }}
-          className="w-64 bg-gray-900"
-        >
-          <EditorRightSidebar />
-        </motion.div>
-      </div>
+    <div style={{ width: "100%", height: "100%" }}>
+      <ReactFlow
+        nodes={reactFlowNodes}
+        edges={reactFlowEdges}
+        onNodesChange={onNodesChangeHandler}
+        onEdgesChange={onEdgesChangeHandler}
+        nodeTypes={nodeTypes}
+        fitView
+      >
+        <Controls />
+        <Background />
+      </ReactFlow>
     </div>
   );
 };
